@@ -6,79 +6,68 @@ export default async function handler(req, res) {
   }
 
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OpenAI API key not configured');
-    }
-
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
+
+    console.log('Request body:', req.body); // Para debug
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4-turbo-preview",
       messages: [
         {
           role: "system",
-          content: "You are a travel planner API that responds only with valid JSON."
+          content: "Eres un planificador de viajes que siempre responde en JSON válido."
         },
         {
           role: "user",
-          content: `Create a travel itinerary for ${req.body.destination} with the following specifications:
-            Duration: ${req.body.days} days
-            Travel types: ${req.body.selectedTravelTypes.join(', ')}
-            Budget: ${req.body.budget}
-            With children: ${req.body.withKids ? 'Yes' : 'No'}
-            Return the response in this exact JSON structure:
+          content: `Crea un itinerario para ${req.body.destination} incluyendo:
+            - ${req.body.days} días
+            - Tipos: ${req.body.selectedTravelTypes.join(', ')}
+            - Presupuesto: ${req.body.budget}
+            Retorna un JSON con esta estructura exacta:
             {
-              "destination": {
-                "name": "string",
-                "weather": "string",
-                "bestTimeToVisit": "string"
-              },
-              "days": [
-                {
-                  "day": 1,
-                  "activities": [
-                    {
-                      "time": "string",
-                      "name": "string",
-                      "description": "string",
-                      "location": {
-                        "address": "string"
-                      },
-                      "duration": "string",
-                      "cost": "string"
-                    }
-                  ],
-                  "meals": [
-                    {
-                      "type": "string",
-                      "time": "string",
-                      "venue": "string",
-                      "cuisine": "string",
-                      "priceRange": "string",
-                      "address": "string"
-                    }
-                  ]
-                }
-              ]
+              "itinerary": {
+                "destination": "string",
+                "days": [
+                  {
+                    "day": 1,
+                    "activities": [
+                      {
+                        "time": "string",
+                        "name": "string",
+                        "description": "string"
+                      }
+                    ]
+                  }
+                ]
+              }
             }`
         }
       ],
-      temperature: 0.7,
       response_format: { type: "json_object" }
     });
 
-    // Intentar parsear la respuesta antes de enviarla
-    const response = completion.choices[0].message.content;
-    JSON.parse(response); // Esto verificará que es JSON válido
+    // Obtener la respuesta y asegurarse de que es JSON válido
+    let responseData = completion.choices[0].message.content;
     
-    res.status(200).json(response);
+    try {
+      // Verificar que es JSON válido
+      const parsedData = JSON.parse(responseData);
+      res.status(200).json(parsedData);
+    } catch (parseError) {
+      console.error('Error parsing JSON:', responseData);
+      res.status(500).json({
+        error: 'Invalid JSON response',
+        details: parseError.message
+      });
+    }
+
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ 
-      error: 'Error generating itinerary', 
-      details: error.message 
+    console.error('OpenAI Error:', error);
+    res.status(500).json({
+      error: 'Failed to generate itinerary',
+      details: error.message
     });
   }
 }
