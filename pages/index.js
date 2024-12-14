@@ -45,10 +45,6 @@ export default function Home() {
   };
 
 const handleSubmit = async () => {
-   if (!formData.destination) {
-    alert('Por favor, ingresa un destino');
-    return;
-  }
   setIsLoading(true);
   
   try {
