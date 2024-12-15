@@ -7,7 +7,6 @@ export default function Home() {
   const [itinerary, setItinerary] = useState(null);
 
   async function handleClick() {
-    // Verificar que haya datos
     if (!destination || !specificDay) {
       alert('Por favor, ingresa un destino y un día.');
       return;
@@ -19,28 +18,33 @@ export default function Home() {
       body: JSON.stringify({ destination, specificDay: Number(specificDay) })
     });
 
+    if (!response.ok) {
+      alert('Hubo un problema al generar el itinerario. Revisa la consola para más detalles.');
+      return;
+    }
+
     const data = await response.json();
     setItinerary(data);
   }
 
   return (
-    <div style={{ padding: '1rem' }}>
-      {/* Formulario para seleccionar destino y día */}
+    <div style={{ padding: '1rem', maxWidth: '600px', margin: '0 auto' }}>
+      <h1 style={{ marginBottom: '1rem' }}>Generador de Itinerario de Viaje</h1>
       <div style={{ marginBottom: '1rem' }}>
         <label style={{ display: 'block', marginBottom: '0.5rem' }}>
           Destino:
-          <input 
+          <input
             type="text"
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
             style={{ marginLeft: '0.5rem' }}
-            placeholder="Ingresa un destino (ej: Rome)"
+            placeholder="Ej: Rome"
           />
         </label>
-        
+
         <label style={{ display: 'block', marginBottom: '0.5rem' }}>
           Día específico:
-          <input 
+          <input
             type="number"
             value={specificDay}
             onChange={(e) => setSpecificDay(e.target.value)}
@@ -50,13 +54,19 @@ export default function Home() {
         </label>
       </div>
 
-      <button 
-        onClick={handleClick} 
-        style={{ background: '#1E40AF', color: '#fff', padding: '0.5rem 1rem', borderRadius: '0.25rem', cursor: 'pointer' }}
+      <button
+        onClick={handleClick}
+        style={{ 
+          background: '#1E40AF', 
+          color: '#fff', 
+          padding: '0.5rem 1rem', 
+          borderRadius: '0.25rem', 
+          cursor: 'pointer' 
+        }}
       >
         Generar itinerario
       </button>
-      
+
       {itinerary && <Itinerary itinerary={itinerary} />}
     </div>
   );
