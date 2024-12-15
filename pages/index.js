@@ -11,6 +11,8 @@ const TRAVEL_TYPES = [
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [itinerary, setItinerary] = useState(null);
+  const [selectedDay, setSelectedDay] = useState(1);
+  const [loadedDays, setLoadedDays] = useState(new Set([1]));
   const [formData, setFormData] = useState({
     destination: '',
     days: 3,
@@ -44,36 +46,84 @@ export default function Home() {
     }));
   };
 
-const handleSubmit = async () => {
-  setIsLoading(true);
-  
-  try {
-    console.log('Enviando datos:', formData); // Para ver qué datos enviamos
+  const handleDaySelect = async (day) => {
+    setSelectedDay(day);
+    if (!loadedDays.has(day)) {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/generate-itinerary', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...formData,
+            specificDay: day
+          })
+        });
 
-    const response = await fetch('/api/generate-itinerary', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formData)
-    });
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Error al generar el itinerario');
+        }
 
-    const data = await response.json();
-    console.log('Respuesta recibida:', data); // Para ver qué datos recibimos
-    
-    if (!response.ok) {
-      throw new Error(data.error || 'Error al generar el itinerario');
+        if (!itinerary) {
+          setItinerary(data);
+        } else {
+          setItinerary(prev => ({
+            ...prev,
+            days: [...prev.days, ...data.days]
+          }));
+        }
+        
+        setLoadedDays(prev => new Set(prev.add(day)));
+      } catch (error) {
+        console.error('Error:', error);
+        alert(`Error: ${error.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.destination) {
+      alert('Por favor, ingresa un destino');
+      return;
     }
 
-    setItinerary(data);
-    console.log('Itinerario establecido:', data); // Para verificar el estado
-  } catch (error) {
-    console.error('Error detallado:', error);
-    alert(`Error: ${error.message}`);
-  } finally {
-    setIsLoading(false);
-  }
-};
+    setIsLoading(true);
+    setLoadedDays(new Set([]));
+    
+    try {
+      const response = await fetch('/api/generate-itinerary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          specificDay: 1
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al generar el itinerario');
+      }
+
+      setItinerary(data);
+      setLoadedDays(new Set([1]));
+      setSelectedDay(1);
+    } catch (error) {
+      console.error('Error:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -97,13 +147,14 @@ const handleSubmit = async () => {
             </div>
             
             <div>
-              <label className="block mb-2 font-medium">Días de viaje</label>
+              <label className="block mb-2 font-medium">Días de viaje (máximo 5)</label>
               <input
                 type="number"
                 className="w-full p-2 border rounded"
                 value={formData.days}
-                onChange={(e) => setFormData({...formData, days: parseInt(e.target.value)})}
+                onChange={(e) => setFormData({...formData, days: Math.min(5, parseInt(e.target.value))})}
                 min="1"
+                max="5"
               />
             </div>
           </div>
@@ -227,6 +278,23 @@ const handleSubmit = async () => {
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-bold mb-6">Tu Itinerario en {itinerary.destination?.name}</h2>
 
+          {/* Botones de días */}
+          <div className="flex gap-2 mb-6 overflow-x-auto">
+            {Array.from({length: Math.min(formData.days, 5)}, (_, i) => i + 1).map(day => (
+              <button
+                key={day}
+                onClick={() => handleDaySelect(day)}
+                className={`px-4 py-2 rounded-lg ${
+                  selectedDay === day 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-100 hover:bg-gray-200'
+                }`}
+              >
+                Día {day}
+              </button>
+            ))}
+          </div>
+
           {/* Información general del destino */}
           {itinerary.destination && (
             <div className="mb-8 bg-blue-50 p-4 rounded">
@@ -248,92 +316,63 @@ const handleSubmit = async () => {
             </div>
           )}
 
-          {/* Itinerario por días */}
-          {itinerary.days && itinerary.days.map((day, dayIndex) => (
-            <div key={dayIndex} className="mb-8">
-              <h3 className="text-lg font-bold mb-4">Día {day.day}</h3>
-              {day.weather && (
-                <p className="text-sm text-gray-600 mb-4">🌤️ {day.weather}</p>
-              )}
-              
-              <div className="space-y-6">
-                {day.activities && day.activities.map((activity, index) => (
-                  <div key={index} className="border-l-4 border-blue-500 pl-4 py-2">
-                    <div className="font-bold text-lg">{activity.time} - {activity.name}</div>
-                    <div className="text-gray-600 mt-1">{activity.description}</div>
-                    
-                    {activity.location && (
-                      <div className="text-sm mt-2">
-                        📍 {activity.location.address}
-                      </div>
-                    )}
+          {/* Itinerario del día seleccionado */}
+          {itinerary.days && itinerary.days
+            .filter(day => day.day === selectedDay)
+            .map((day, dayIndex) => (
+              <div key={dayIndex} className="mb-8">
+                <h3 className="text-lg font-bold mb-4">Día {day.day}</h3>
+                {day.weather && (
+                  <p className="text-sm text-gray-600 mb-4">🌤️ {day.weather}</p>
+                )}
+                
+                <div className="space-y-6">
+                  {day.activities && day.activities.map((activity, index) => (
+                    <div key={index} className="border-l-4 border-blue-500 pl-4 py-2">
+                      <div className="font-bold text-lg">{activity.time} - {activity.name}</div>
+                      <div className="text-gray-600 mt-1">{activity.description}</div>
+                      
+                      {activity.location && (
+                        <div className="text-sm mt-2">
+                          📍 {activity.location.address}
+                        </div>
+                      )}
 
-                    {activity.duration && (
-                      <div className="text-sm mt-1">⏱️ Duración: {activity.duration}</div>
-                    )}
+                      {activity.duration && (
+                        <div className="text-sm mt-1">⏱️ Duración: {activity.duration}</div>
+                      )}
 
-                    {activity.cost && (
-                      <div className="text-sm mt-1">💰 Costo: {activity.cost}</div>
-                    )}
+                      {activity.cost && (
+                        <div className="text-sm mt-1">💰 Costo: {activity.cost}</div>
+                      )}
 
-                    {activity.localTips && activity.localTips.length > 0 && (
-                      <div className="mt-2">
-                        <p className="font-semibold text-sm">Tips locales:</p>
-                        <ul className="list-disc pl-5 text-sm">
-                          {activity.localTips.map((tip, tipIndex) => (
-                            <li key={tipIndex}>{tip}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {day.meals && day.meals.map((meal, index) => (
-                  <div key={index} className="border-l-4 border-green-500 pl-4 py-2">
-                    <div className="font-bold text-lg">{meal.time} - {meal.type}</div>
-                    <div className="text-gray-600">{meal.venue}</div>
-                    <div className="mt-2 space-y-1">
-                      <p className="text-sm">🍽️ Cocina: {meal.cuisine}</p>
-                      <p className="text-sm">💰 Rango de precio: {meal.priceRange}</p>
-                      <p className="text-sm">📍 {meal.address}</p>
+                      {activity.localTips && activity.localTips.length > 0 && (
+                        <div className="mt-2">
+                          <p className="font-semibold text-sm">Tips locales:</p>
+                          <ul className="list-disc pl-5 text-sm">
+                            {activity.localTips.map((tip, tipIndex) => (
+                              <li key={tipIndex}>{tip}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+                  ))}
 
-          {/* Información de presupuesto */}
-          {itinerary.budget && (
-            <div className="mt-8 bg-yellow-50 p-4 rounded">
-              <h3 className="font-bold text-lg mb-2">Presupuesto Estimado</h3>
-              <div className="space-y-2">
-                <p><strong>Costo diario estimado:</strong> {itinerary.budget.estimated_daily_cost}</p>
-                {itinerary.budget.breakdown && (
-                  <div className="mt-2">
-                    <p className="font-semibold">Desglose:</p>
-                    <ul className="list-none pl-5">
-                      <li>🏨 Alojamiento: {itinerary.budget.breakdown.accommodation}</li>
-                      <li>🍽️ Comida: {itinerary.budget.breakdown.food}</li>
-                      <li>🎫 Actividades: {itinerary.budget.breakdown.activities}</li>
-                      <li>🚌 Transporte: {itinerary.budget.breakdown.transport}</li>
-                    </ul>
-                  </div>
-                )}
-                {itinerary.budget.money_saving_tips && (
-                  <div className="mt-2">
-                    <p className="font-semibold">Tips para ahorrar:</p>
-                    <ul className="list-disc pl-5">
-                      {itinerary.budget.money_saving_tips.map((tip, index) => (
-                        <li key={index}>{tip}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                  {day.meals && day.meals.map((meal, index) => (
+                    <div key={index} className="border-l-4 border-green-500 pl-4 py-2">
+                      <div className="font-bold text-lg">{meal.time} - {meal.type}</div>
+                      <div className="text-gray-600">{meal.venue}</div>
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm">🍽️ Cocina: {meal.cuisine}</p>
+                        <p className="text-sm">💰 Rango de precio: {meal.priceRange}</p>
+                        <p className="text-sm">📍 {meal.address}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            ))}
         </div>
       )}
     </div>
