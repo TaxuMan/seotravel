@@ -1,33 +1,28 @@
 import OpenAI from 'openai';
 
 export default async function handler(req, res) {
-  // Verifica que el método sea POST
+  // Permitir solo método POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido. Use POST.' });
   }
 
-  // Verifica que el Content-Type sea JSON
+  // Verificar que el contenido sea JSON
   if (!req.headers['content-type']?.includes('application/json')) {
     return res.status(400).json({ error: 'Se requiere Content-Type: application/json' });
   }
 
   const { destination, specificDay } = req.body;
 
-  // Verifica la presencia de los parámetros necesarios
+  // Verificar parámetros
   if (!destination || !specificDay) {
     return res.status(400).json({ error: 'Faltan parámetros: destination o specificDay' });
   }
 
-  console.log('API Key presente:', !!process.env.OPENAI_API_KEY);
-  console.log('Datos recibidos:', { destination, specificDay });
-
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-  });
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", // Cambia a "gpt-4" si tienes acceso y lo prefieres
+      model: "gpt-3.5-turbo", 
       messages: [
         {
           role: "system",
@@ -63,33 +58,30 @@ If you cannot comply, return {}`
         },
         {
           role: "user",
-          content: `Generate a travel itinerary for day ${specificDay} for the destination: "${destination}". Provide best time to visit, weather, and a list of activities with time, name, description, duration, and cost.`
+          content: `Generate a travel itinerary for day ${specificDay} for the destination: "${destination}". 
+Include best time to visit, weather, and a list of activities with time, name, description, duration, and cost.
+Respond ONLY with the JSON object.`
         }
       ],
       temperature: 0
     });
 
-    console.log('Respuesta de OpenAI completa:', JSON.stringify(completion, null, 2));
-    console.log('Contenido del mensaje:', completion.choices[0].message.content);
-
+    // Intentar parsear la respuesta como JSON
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(completion.choices[0].message.content);
     } catch (e) {
-      console.error("No se pudo parsear la respuesta como JSON:", e);
-      console.log("Respuesta obtenida:", completion.choices[0].message.content);
       return res.status(500).json({
         error: "La respuesta no es un JSON válido",
         raw: completion.choices[0].message.content
       });
     }
 
-    // Devuelve la respuesta parseada en formato JSON
+    // Si todo sale bien, devolver el JSON generado
     return res.status(200).json(parsedResponse);
 
   } catch (openaiError) {
-    console.error('Error de OpenAI:', openaiError);
-    // Fallback si OpenAI falla o no produce un resultado utilizable
+    // Si hay un error con OpenAI, devolver un fallback
     return res.status(200).json({
       destination: {
         name: destination || "Desconocido",
@@ -101,7 +93,7 @@ If you cannot comply, return {}`
         activities: [{
           time: "10:00",
           name: "Visita turística",
-          description: "Tour por el centro",
+          description: "Tour por el centro histórico",
           duration: "2 horas",
           cost: "Gratuito"
         }]
