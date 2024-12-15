@@ -6,32 +6,50 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY
     });
 
-    const basicResponse = {
-      destination: {
-        name: req.body.destination,
-        weather: "Soleado",
-        bestTimeToVisit: "Primavera"
-      },
-      days: [
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4-turbo-preview",
+      messages: [
         {
-          day: 1,
-          activities: [
+          role: "system",
+          content: "Eres un experto planificador de viajes. Genera respuestas en JSON."
+        },
+        {
+          role: "user",
+          content: `Genera un itinerario para ${req.body.destination} con estas características:
+            - ${req.body.days} días
+            - Intereses: ${req.body.selectedTravelTypes.join(', ')}
+            - Presupuesto: ${req.body.budget}
+            El formato debe ser EXACTAMENTE:
             {
-              time: "09:00",
-              name: "Visita turística",
-              description: "Tour por el centro"
-            }
-          ]
+              "destination": {
+                "name": "${req.body.destination}",
+                "weather": "descripción del clima",
+                "bestTimeToVisit": "mejor época"
+              },
+              "days": [
+                {
+                  "day": 1,
+                  "activities": [
+                    {
+                      "time": "hora",
+                      "name": "nombre de la actividad",
+                      "description": "descripción detallada"
+                    }
+                  ]
+                }
+              ]
+            }`
         }
-      ]
-    };
+      ],
+      response_format: { type: "json_object" }
+    });
 
-    // Primero probamos retornando una respuesta fija
-    return res.status(200).json(basicResponse);
+    const responseData = JSON.parse(completion.choices[0].message.content);
+    res.status(200).json(responseData);
 
   } catch (error) {
-    console.error('Error completo:', error);
-    return res.status(500).json({ 
+    console.error('Error:', error);
+    res.status(500).json({ 
       error: 'Error en el servidor',
       message: error.message
     });
