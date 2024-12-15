@@ -1,16 +1,19 @@
 import OpenAI from 'openai';
 
 export default async function handler(req, res) {
+  // Verifica que el método sea POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido. Use POST.' });
   }
 
+  // Verifica que el Content-Type sea JSON
   if (!req.headers['content-type']?.includes('application/json')) {
     return res.status(400).json({ error: 'Se requiere Content-Type: application/json' });
   }
 
   const { destination, specificDay } = req.body;
 
+  // Verifica la presencia de los parámetros necesarios
   if (!destination || !specificDay) {
     return res.status(400).json({ error: 'Faltan parámetros: destination o specificDay' });
   }
@@ -18,15 +21,18 @@ export default async function handler(req, res) {
   console.log('API Key presente:', !!process.env.OPENAI_API_KEY);
   console.log('Datos recibidos:', { destination, specificDay });
 
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  });
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", // O "gpt-4" si tienes acceso.
+      model: "gpt-3.5-turbo", // Cambia a "gpt-4" si tienes acceso y lo prefieres
       messages: [
         {
           role: "system",
-          content: `You are a travel planner assistant.
+          content: `
+You are a travel planner assistant.
 You MUST ONLY output a valid JSON object and NOTHING ELSE.
 No explanations, no introductions, no code blocks, no extra text.
 The JSON should have this structure:
@@ -57,7 +63,7 @@ If you cannot comply, return {}`
         },
         {
           role: "user",
-          content: `Generate a travel itinerary for day ${specificDay} for the destination: "${destination}".`
+          content: `Generate a travel itinerary for day ${specificDay} for the destination: "${destination}". Provide best time to visit, weather, and a list of activities with time, name, description, duration, and cost.`
         }
       ],
       temperature: 0
@@ -78,11 +84,12 @@ If you cannot comply, return {}`
       });
     }
 
+    // Devuelve la respuesta parseada en formato JSON
     return res.status(200).json(parsedResponse);
 
   } catch (openaiError) {
     console.error('Error de OpenAI:', openaiError);
-    // Respuesta de fallback
+    // Fallback si OpenAI falla o no produce un resultado utilizable
     return res.status(200).json({
       destination: {
         name: destination || "Desconocido",
