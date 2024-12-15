@@ -1,37 +1,49 @@
+import { predefinedDestinations } from '../../data/destinations';
+import OpenAI from 'openai';
+
 export default async function handler(req, res) {
   try {
-    // Log para verificar que recibimos los datos
-    console.log('API Key presente:', !!process.env.HF_API_KEY);
-    console.log('Datos recibidos:', req.body);
+    const { destination, specificDay } = req.body;
+    const destinationKey = destination.toLowerCase();
 
-    // Respuesta estática de prueba
-    return res.status(200).json({
-      destination: {
-        name: req.body.destination || "Ciudad",
-        weather: "Clima mediterráneo",
-        bestTimeToVisit: "Primavera"
-      },
-      days: [
+    // Verificar si tenemos el destino predefinido
+    if (predefinedDestinations[destinationKey]) {
+      const predefinedData = predefinedDestinations[destinationKey];
+      
+      // Devolver solo el día específico solicitado
+      return res.status(200).json({
+        destination: predefinedData.destination,
+        days: predefinedData.days.filter(day => day.day === specificDay)
+      });
+    }
+
+    // Si no está predefinido, usar OpenAI
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
         {
-          day: 1,
-          activities: [
-            {
-              time: "10:00",
-              name: "Visita al centro",
-              description: "Tour por la ciudad",
-              duration: "2 horas",
-              cost: "Gratuito"
-            }
-          ]
+          role: "system",
+          content: "Eres un experto planificador de viajes."
+        },
+        {
+          role: "user",
+          content: `Genera un itinerario para el día ${specificDay} en ${destination}.`
         }
       ]
     });
 
+    // Procesar la respuesta de OpenAI
+    // ... código para procesar la respuesta ...
+
   } catch (error) {
-    console.error('Error completo:', error);
-    return res.status(500).json({ 
-      error: 'Error en el servidor',
-      message: error.message 
+    console.error('Error:', error);
+    return res.status(500).json({
+      error: 'Error generando itinerario',
+      details: error.message
     });
   }
 }
