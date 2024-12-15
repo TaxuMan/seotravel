@@ -1,85 +1,77 @@
 import OpenAI from 'openai';
 
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
   try {
     const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
+      apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // Si la llamada a OpenAI falla, usaremos esta respuesta como fallback
-    const fallbackResponse = {
-      destination: {
-        name: req.body.destination || "Ciudad desconocida",
-        weather: "Clima agradable",
-        bestTimeToVisit: "Primavera"
-      },
-      days: [
+    const { destination, specificDay, selectedTravelTypes, budget, withKids } = req.body;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4-turbo-preview",
+      messages: [
         {
-          day: 1,
-          activities: [
+          role: "system",
+          content: "Eres un experto planificador de viajes. Genera respuestas JSON detalladas."
+        },
+        {
+          role: "user",
+          content: `Genera un itinerario para el día ${specificDay} en ${destination} con:
+            - Tipos de actividades: ${selectedTravelTypes.join(', ')}
+            - Presupuesto: ${budget}
+            - Con niños: ${withKids ? 'Sí' : 'No'}
+
+            Devuelve un JSON con esta estructura exacta:
             {
-              time: "09:00",
-              name: "Tour por la ciudad",
-              description: "Visita guiada por los principales puntos de interés"
-            }
-          ]
+              "destination": {
+                "name": "${destination}",
+                "weather": "descripción del clima",
+                "bestTimeToVisit": "mejor época para visitar"
+              },
+              "days": [
+                {
+                  "day": ${specificDay},
+                  "activities": [
+                    {
+                      "time": "hora de la actividad",
+                      "name": "nombre de la actividad",
+                      "description": "descripción detallada",
+                      "duration": "duración estimada",
+                      "cost": "costo aproximado"
+                    }
+                  ],
+                  "meals": [
+                    {
+                      "time": "hora de la comida",
+                      "type": "tipo de comida",
+                      "venue": "nombre del restaurante",
+                      "cuisine": "tipo de cocina",
+                      "priceRange": "rango de precios",
+                      "address": "dirección del restaurante"
+                    }
+                  ]
+                }
+              ]
+            }`
         }
-      ]
-    };
+      ],
+      response_format: { type: "json_object" }
+    });
 
-    try {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4-turbo-preview",
-        messages: [
-          {
-            role: "system",
-            content: "Eres un planificador de viajes que genera itinerarios en formato JSON."
-          },
-          {
-            role: "user",
-            content: `Crea un itinerario para ${req.body.destination} que incluya:
-              - Actividades: ${req.body.selectedTravelTypes.join(', ')}
-              - Presupuesto: ${req.body.budget}
-              
-              Usa exactamente esta estructura JSON:
-              {
-                "destination": {
-                  "name": "nombre ciudad",
-                  "weather": "descripción clima",
-                  "bestTimeToVisit": "mejor época"
-                },
-                "days": [
-                  {
-                    "day": 1,
-                    "activities": [
-                      {
-                        "time": "hora",
-                        "name": "nombre actividad",
-                        "description": "descripción"
-                      }
-                    ]
-                  }
-                ]
-              }`
-          }
-        ],
-        response_format: { type: "json_object" }
-      });
-
-      const openaiResponse = completion.choices[0].message.content;
-      const parsedResponse = JSON.parse(openaiResponse);
-      return res.status(200).json(parsedResponse);
-    } catch (openaiError) {
-      console.error('Error con OpenAI:', openaiError);
-      // Si hay un error con OpenAI, usamos la respuesta de fallback
-      return res.status(200).json(fallbackResponse);
-    }
+    const responseData = completion.choices[0].message.content;
+    const parsedData = JSON.parse(responseData);
+    res.status(200).json(parsedData);
 
   } catch (error) {
-    console.error('Error del servidor:', error);
-    return res.status(500).json({ 
-      error: 'Error en el servidor',
-      details: error.message
+    console.error('Error:', error);
+    res.status(500).json({ 
+      error: 'Error generando itinerario',
+      details: error.message 
     });
   }
 }
