@@ -12,7 +12,7 @@ export default async function handler(req, res) {
 
     try {
       const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "gpt-3.5-turbo", // Cambia a "gpt-4" si tienes acceso
         messages: [
           {
             role: "system",
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
           },
           {
             role: "user",
-            content: `Generate a travel itinerary for day ${specificDay} in JSON format. The itinerary should be for the destination ${destination}.`
+            content: `Generate a travel itinerary for day ${specificDay} in JSON format. The itinerary should be for the destination: ${destination}. Include details such as best time to visit, weather, and a list of activities with time, name, description, duration and cost.`
           }
         ],
         temperature: 0
@@ -28,21 +28,23 @@ export default async function handler(req, res) {
 
       console.log('Respuesta de OpenAI:', completion.choices[0].message.content);
 
-      // Intentar parsear la respuesta a JSON
       let parsedResponse;
       try {
         parsedResponse = JSON.parse(completion.choices[0].message.content);
       } catch (e) {
         console.error("No se pudo parsear la respuesta como JSON:", e);
         console.log("Respuesta obtenida:", completion.choices[0].message.content);
-        return res.status(500).json({ error: "La respuesta no es un JSON válido", raw: completion.choices[0].message.content });
+        return res.status(500).json({ 
+          error: "La respuesta no es un JSON válido", 
+          raw: completion.choices[0].message.content 
+        });
       }
 
       return res.status(200).json(parsedResponse);
 
     } catch (openaiError) {
       console.error('Error de OpenAI:', openaiError);
-      // Respuesta de fallback si el modelo falla
+      // Respuesta de fallback si ocurre algún error con OpenAI
       return res.status(200).json({
         destination: {
           name: destination || "Desconocido",
