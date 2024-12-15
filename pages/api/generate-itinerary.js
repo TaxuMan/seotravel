@@ -30,10 +30,10 @@ export default async function handler(req, res) {
         {
           role: "system",
           content: `
-You are a travel planner assistant.
-You MUST ONLY output a valid JSON object and NOTHING ELSE.
-No explanations, no introductions, no code blocks, no extra text.
-The JSON should have this structure:
+Eres un asistente de planificación de viajes.
+SÓLO DEBE mostrar un objeto JSON válido y NADA MÁS.
+Sin explicaciones, sin introducciones, sin bloques de código, sin texto extra.
+El JSON debe tener esta estructura:
 
 {
   "destination": {
@@ -61,9 +61,9 @@ If you cannot comply, return {}`
         },
         {
           role: "user",
-          content: `Generate a travel itinerary for day ${specificDay} for the destination: "${destination}". 
-Include best time to visit, weather, and a list of activities with time, name, description, duration, and cost.
-Respond ONLY with the JSON object.`
+          content: `Generar un itinerario de viaje para el día ${specificDay} para el destino: «${destino}». 
+Incluye la mejor hora para visitarlo, el tiempo y una lista de actividades con hora, nombre, descripción, duración y coste.
+Responder SÓLO con el objeto JSON.`
         }
       ],
       temperature: 0
