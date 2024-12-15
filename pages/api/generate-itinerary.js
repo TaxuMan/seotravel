@@ -2,56 +2,46 @@ import OpenAI from 'openai';
 
 export default async function handler(req, res) {
   try {
+    // Verificar que tenemos todos los datos necesarios
+    console.log('Datos recibidos:', req.body);
+
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY
     });
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
-      messages: [
-        {
-          role: "system",
-          content: "Eres un experto planificador de viajes. Genera respuestas en JSON."
-        },
-        {
-          role: "user",
-          content: `Genera un itinerario para ${req.body.destination} con estas características:
-            - ${req.body.days} días
-            - Intereses: ${req.body.selectedTravelTypes.join(', ')}
-            - Presupuesto: ${req.body.budget}
-            El formato debe ser EXACTAMENTE:
-            {
-              "destination": {
-                "name": "${req.body.destination}",
-                "weather": "descripción del clima",
-                "bestTimeToVisit": "mejor época"
-              },
-              "days": [
-                {
-                  "day": 1,
-                  "activities": [
-                    {
-                      "time": "hora",
-                      "name": "nombre de la actividad",
-                      "description": "descripción detallada"
-                    }
-                  ]
-                }
-              ]
-            }`
-        }
-      ],
-      response_format: { type: "json_object" }
-    });
+    // Log para verificar la API key
+    console.log('OpenAI configurado:', !!process.env.OPENAI_API_KEY);
 
-    const responseData = JSON.parse(completion.choices[0].message.content);
-    res.status(200).json(responseData);
+    // Crear un objeto de respuesta simple
+    const simpleResponse = {
+      destination: {
+        name: req.body.destination || "Ciudad desconocida",
+        weather: "Clima agradable",
+        bestTimeToVisit: "Primavera"
+      },
+      days: [
+        {
+          day: 1,
+          activities: [
+            {
+              time: "09:00",
+              name: "Tour por la ciudad",
+              description: "Visita guiada por los principales puntos de interés"
+            }
+          ]
+        }
+      ]
+    };
+
+    // Por ahora, retornamos la respuesta simple en lugar de llamar a OpenAI
+    return res.status(200).json(simpleResponse);
 
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ 
+    console.error('Error detallado:', error);
+    return res.status(500).json({ 
       error: 'Error en el servidor',
-      message: error.message
+      details: error.message,
+      stack: error.stack
     });
   }
 }
