@@ -1,77 +1,45 @@
 import OpenAI from 'openai';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
   try {
     const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: process.env.OPENAI_API_KEY
     });
 
-    const { destination, specificDay, selectedTravelTypes, budget, withKids } = req.body;
+    console.log('Request body:', req.body); // Para debug
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
-      messages: [
+    // Respuesta estática para pruebas
+    const testResponse = {
+      destination: {
+        name: req.body.destination,
+        weather: "Templado oceánico. Inviernos fríos y veranos suaves.",
+        bestTimeToVisit: "Abril a Junio y Octubre a principios de Noviembre"
+      },
+      days: [
         {
-          role: "system",
-          content: "Eres un experto planificador de viajes. Genera respuestas JSON detalladas."
-        },
-        {
-          role: "user",
-          content: `Genera un itinerario para el día ${specificDay} en ${destination} con:
-            - Tipos de actividades: ${selectedTravelTypes.join(', ')}
-            - Presupuesto: ${budget}
-            - Con niños: ${withKids ? 'Sí' : 'No'}
-
-            Devuelve un JSON con esta estructura exacta:
+          day: req.body.specificDay || 1,
+          activities: [
             {
-              "destination": {
-                "name": "${destination}",
-                "weather": "descripción del clima",
-                "bestTimeToVisit": "mejor época para visitar"
-              },
-              "days": [
-                {
-                  "day": ${specificDay},
-                  "activities": [
-                    {
-                      "time": "hora de la actividad",
-                      "name": "nombre de la actividad",
-                      "description": "descripción detallada",
-                      "duration": "duración estimada",
-                      "cost": "costo aproximado"
-                    }
-                  ],
-                  "meals": [
-                    {
-                      "time": "hora de la comida",
-                      "type": "tipo de comida",
-                      "venue": "nombre del restaurante",
-                      "cuisine": "tipo de cocina",
-                      "priceRange": "rango de precios",
-                      "address": "dirección del restaurante"
-                    }
-                  ]
-                }
-              ]
-            }`
+              time: "10:00",
+              name: "Paseo por el centro",
+              description: "Tour guiado por los principales monumentos",
+              duration: "2 horas",
+              cost: "Gratuito"
+            }
+          ]
         }
-      ],
-      response_format: { type: "json_object" }
-    });
+      ]
+    };
 
-    const responseData = completion.choices[0].message.content;
-    const parsedData = JSON.parse(responseData);
-    res.status(200).json(parsedData);
+    // Primero intentamos con una respuesta estática
+    return res.status(200).json(testResponse);
 
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ 
-      error: 'Error generando itinerario',
-      details: error.message 
+    console.error('Error completo:', error);
+    return res.status(500).json({ 
+      error: 'Error en el servidor',
+      message: error.message,
+      stack: error.stack 
     });
   }
 }
