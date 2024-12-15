@@ -7,43 +7,50 @@ export default async function handler(req, res) {
     });
 
     const { destination, specificDay } = req.body;
-
     console.log('API Key presente:', !!process.env.OPENAI_API_KEY);
     console.log('Datos recibidos:', { destination, specificDay });
 
     try {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4-turbo-preview",
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
-            content: "You are a travel planner that responds in JSON format."
+            content: "You are a travel planner. Always respond with a valid JSON object only. Do not include any explanatory text, just return a JSON object."
           },
           {
             role: "user",
-            content: "Generate a travel itinerary for day 1 in JSON format"
+            content: `Generate a travel itinerary for day ${specificDay} in JSON format. The itinerary should be for the destination ${destination}.`
           }
         ],
-        response_format: { type: "json_object" }
+        temperature: 0
       });
 
       console.log('Respuesta de OpenAI:', completion.choices[0].message.content);
-      
-      // Intentar parsear la respuesta
-      const parsedResponse = JSON.parse(completion.choices[0].message.content);
+
+      // Intentar parsear la respuesta a JSON
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(completion.choices[0].message.content);
+      } catch (e) {
+        console.error("No se pudo parsear la respuesta como JSON:", e);
+        console.log("Respuesta obtenida:", completion.choices[0].message.content);
+        return res.status(500).json({ error: "La respuesta no es un JSON válido", raw: completion.choices[0].message.content });
+      }
+
       return res.status(200).json(parsedResponse);
 
     } catch (openaiError) {
       console.error('Error de OpenAI:', openaiError);
-      // Respuesta de fallback
+      // Respuesta de fallback si el modelo falla
       return res.status(200).json({
         destination: {
-          name: destination,
+          name: destination || "Desconocido",
           weather: "Clima mediterráneo",
           bestTimeToVisit: "Primavera"
         },
         days: [{
-          day: specificDay,
+          day: specificDay || 1,
           activities: [{
             time: "10:00",
             name: "Visita turística",
@@ -54,6 +61,7 @@ export default async function handler(req, res) {
         }]
       });
     }
+
   } catch (error) {
     console.error('Error general:', error);
     return res.status(500).json({
