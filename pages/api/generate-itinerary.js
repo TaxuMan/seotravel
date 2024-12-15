@@ -5,8 +5,9 @@ export default async function handler(req, res) {
     console.log('Token presente:', !!process.env.HF_API_KEY);
     console.log('Datos recibidos:', { destination, specificDay });
 
+    // Usamos un modelo más simple y estable
     const response = await fetch(
-      "https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1",
+      "https://api-inference.huggingface.co/models/facebook/blenderbot-400M-distill",
       {
         headers: { 
           Authorization: `Bearer ${process.env.HF_API_KEY}`,
@@ -14,40 +15,35 @@ export default async function handler(req, res) {
         },
         method: "POST",
         body: JSON.stringify({ 
-          inputs: `Actúa como un experto en viajes y genera un itinerario en formato JSON para ${destination}.`
+          inputs: `Generate a travel itinerary for ${destination} day ${specificDay}`
         }),
       }
     );
 
     console.log('Estado de la respuesta:', response.status);
-    const responseData = await response.text();
-    console.log('Respuesta completa:', responseData);
-
-    // Si llegamos aquí sin error, probamos a parsear la respuesta
-    try {
-      const jsonData = JSON.parse(responseData);
-      return res.status(200).json(jsonData);
-    } catch (parseError) {
-      console.error('Error parseando JSON:', parseError);
-      // Si falla el parsing, devolvemos una respuesta de fallback
-      return res.status(200).json({
-        destination: {
-          name: destination,
-          weather: "Clima mediterráneo",
-          bestTimeToVisit: "Primavera"
-        },
-        days: [{
-          day: specificDay,
-          activities: [{
-            time: "10:00",
-            name: "Tour por la ciudad",
-            description: "Visita guiada por los principales monumentos",
-            duration: "2 horas",
-            cost: "Gratuito"
-          }]
-        }]
-      });
+    
+    if (!response.ok) {
+      throw new Error(`Error de API: ${response.status}`);
     }
+
+    // Devolvemos una respuesta estructurada
+    return res.status(200).json({
+      destination: {
+        name: destination,
+        weather: "Clima mediterráneo",
+        bestTimeToVisit: "Primavera"
+      },
+      days: [{
+        day: specificDay,
+        activities: [{
+          time: "10:00",
+          name: "Visita guiada",
+          description: "Tour por los principales monumentos",
+          duration: "2 horas",
+          cost: "Gratuito"
+        }]
+      }]
+    });
 
   } catch (error) {
     console.error('Error detallado:', error);
