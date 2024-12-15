@@ -6,40 +6,46 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY
     });
 
-    console.log('Request body:', req.body); // Para debug
+    const { destination, specificDay } = req.body;
+    console.log('Generando día:', specificDay);
 
-    // Respuesta estática para pruebas
+    // Respuesta estática específica para cada día
     const testResponse = {
       destination: {
-        name: req.body.destination,
+        name: destination,
         weather: "Templado oceánico. Inviernos fríos y veranos suaves.",
         bestTimeToVisit: "Abril a Junio y Octubre a principios de Noviembre"
       },
       days: [
         {
-          day: req.body.specificDay || 1,
+          day: specificDay,
           activities: [
             {
               time: "10:00",
-              name: "Paseo por el centro",
-              description: "Tour guiado por los principales monumentos",
+              name: `Actividad del día ${specificDay}`,
+              description: `Descripción para el día ${specificDay}`,
               duration: "2 horas",
               cost: "Gratuito"
+            },
+            {
+              time: "14:00",
+              name: `Segunda actividad del día ${specificDay}`,
+              description: `Otra actividad para el día ${specificDay}`,
+              duration: "3 horas",
+              cost: "10€"
             }
           ]
         }
       ]
     };
 
-    // Primero intentamos con una respuesta estática
     return res.status(200).json(testResponse);
 
   } catch (error) {
     console.error('Error completo:', error);
     return res.status(500).json({ 
       error: 'Error en el servidor',
-      message: error.message,
-      stack: error.stack 
+      message: error.message
     });
   }
 }
