@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", 
+      model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
@@ -66,7 +66,7 @@ Respond ONLY with the JSON object.`
       temperature: 0
     });
 
-    // Intentar parsear la respuesta como JSON
+    // Intentar parsear respuesta
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(completion.choices[0].message.content);
@@ -77,11 +77,11 @@ Respond ONLY with the JSON object.`
       });
     }
 
-    // Si todo sale bien, devolver el JSON generado
+    // Devolver itinerario en formato JSON
     return res.status(200).json(parsedResponse);
 
   } catch (openaiError) {
-    // Si hay un error con OpenAI, devolver un fallback
+    // Si OpenAI falla, devolver un fallback
     return res.status(200).json({
       destination: {
         name: destination || "Desconocido",
