@@ -1,0 +1,98 @@
+<?php /**
+ * Template Name: Simulateur Pret
+ */ ?>
+<!doctype html>
+<html lang="{{ country.locale }}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ country.simulator.page_title }}</title>
+  <meta name="description" content="{{ country.meta_description }}" />
+  <style>
+    body{margin:0;font-family:Inter,system-ui,sans-serif;background:#f8fafc;color:#0f172a}.wrap{max-width:900px;margin:0 auto;padding:20px}
+    .hero{background:#0f172a;color:#fff;padding:28px;border-radius:14px}.card{background:#fff;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 8px 20px rgba(0,0,0,.08)}
+    .row{display:grid;grid-template-columns:1fr;gap:10px}@media(min-width:768px){.row{grid-template-columns:1fr 1fr}}
+    .btn{background:#2563eb;color:#fff;padding:10px 14px;border:0;border-radius:9px;cursor:pointer} select,input[type=range]{width:100%}
+    .pill{display:inline-block;background:#e2e8f0;border-radius:999px;padding:6px 10px}
+  </style>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ country.adsense_pub_id }}" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>{{ country.simulator.hero_title }}</h1>
+      <p>{{ country.simulator.hero_subtitle }}</p>
+    </header>
+
+    <section class="card">
+      <h2>{{ country.simulator.step1_title }}</h2>
+      <p>{{ country.simulator.step1_subtitle }}</p>
+      <input id="amount" type="range" min="{{ country.simulator.slider_min }}" max="{{ country.simulator.slider_max }}" step="{{ country.simulator.slider_step }}" value="{{ country.simulator.slider_default }}" />
+      <p class="pill"><span id="amountOut"></span></p>
+    </section>
+
+    <section class="card row">
+      <div>
+        <h2>{{ country.simulator.step2_title }}</h2>
+        <p>{{ country.simulator.step2_subtitle }}</p>
+        <select id="duration">{% for d in country.simulator.duration_options %}<option value="{{ d }}">{{ d }} {{ country.simulator.duration_label }}</option>{% endfor %}</select>
+      </div>
+      <div>
+        <h2>{{ country.simulator.step3_title }}</h2>
+        <p>{{ country.simulator.step3_subtitle }}</p>
+        <select id="situation">{% for s in country.simulator.situation_options %}<option value="{{ s.key }}">{{ s.label }}</option>{% endfor %}</select>
+      </div>
+    </section>
+
+    <section class="card">
+      <button class="btn" id="calc">Calculer</button>
+      <h3>{{ country.simulator.results_title }}</h3>
+      <div class="row">
+        <p><strong>{{ country.simulator.labels.mensualite }}</strong><br><span id="mensualite"></span></p>
+        <p><strong>{{ country.simulator.labels.taux }}</strong><br><span id="taux"></span></p>
+        <p><strong>{{ country.simulator.labels.cout_total }}</strong><br><span id="cout"></span></p>
+        <p><strong>{{ country.simulator.labels.total_rembourse }}</strong><br><span id="total"></span></p>
+      </div>
+      <p id="conseil"></p>
+      <p><a href="{{ country.subdomain_path }}">{{ country.simulator.guide_cta_button }}</a></p>
+    </section>
+  </div>
+
+  <script>
+    const locale = "{{ country.locale }}";
+    const currency = "{{ country.currency }}";
+    const symbol = "{{ country.currency_symbol }}";
+    const rates = {{ country.simulator.taux_by_situation | tojson }};
+    const conseils = {{ country.simulator.conseils_by_situation | tojson }};
+
+    const fmt = (n) => new Intl.NumberFormat(locale, {style: 'currency', currency}).format(n);
+    const amount = document.getElementById('amount');
+    const amountOut = document.getElementById('amountOut');
+    const duration = document.getElementById('duration');
+    const situation = document.getElementById('situation');
+
+    function renderAmount(){ amountOut.textContent = fmt(Number(amount.value)); }
+    amount.addEventListener('input', renderAmount); renderAmount();
+
+    function monthlyPayment(principal, annualRate, months){
+      const r = annualRate / 12;
+      if (r === 0) return principal / months;
+      return principal * (r / (1 - Math.pow(1 + r, -months)));
+    }
+
+    document.getElementById('calc').addEventListener('click', () => {
+      const p = Number(amount.value);
+      const n = Number(duration.value);
+      const k = situation.value;
+      const rate = Number(rates[k] || 0.05);
+      const m = monthlyPayment(p, rate, n);
+      const total = m * n;
+      document.getElementById('mensualite').textContent = fmt(m);
+      document.getElementById('taux').textContent = (rate * 100).toFixed(2) + ' %';
+      document.getElementById('cout').textContent = fmt(total - p);
+      document.getElementById('total').textContent = fmt(total);
+      document.getElementById('conseil').textContent = conseils[k] || '';
+    });
+  </script>
+</body>
+</html>

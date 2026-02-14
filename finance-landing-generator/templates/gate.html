@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="{{ country.locale }}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ country.gate_title }}</title>
+  <meta name="description" content="{{ country.gate_description }}" />
+  <style>
+    body{margin:0;background:#0b1020;color:#fff;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:24px}
+    .card{background:#131c34;padding:24px;border-radius:14px} .btn{background:#22c55e;color:#052e16;border:0;padding:12px 16px;border-radius:10px;font-weight:700;cursor:pointer}
+    .muted{color:#c7d2fe}.pill{display:inline-block;background:#1d4ed8;padding:6px 10px;border-radius:999px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="card">
+      <h1>{{ country.gate_title }}</h1>
+      <p>{{ country.gate_subtitle }}</p>
+      <p class="muted">{{ country.gate_description }}</p>
+      <p class="pill">{{ country.gate_stat_pill }}</p>
+      <p>
+        <label><input type="checkbox" id="ok"> <span>{{ country.gate_checkbox_text|safe }}</span></label>
+      </p>
+      <p><button id="go" class="btn" disabled>{{ country.gate_button_text }}</button></p>
+      <p class="muted">{{ country.trust_labels.confidential }} • {{ country.trust_labels.free }} • {{ country.trust_labels.no_commitment }}</p>
+      <p class="muted">{{ country.disclaimer }}</p>
+    </section>
+  </div>
+  <script>
+    const c = document.getElementById('ok');
+    const b = document.getElementById('go');
+    c.addEventListener('change', ()=> b.disabled = !c.checked);
+    b.addEventListener('click', ()=> window.location.href = '{{ country.gate_redirect_url }}');
+  </script>
+</body>
+</html>
